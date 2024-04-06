@@ -33,7 +33,7 @@ def data_visualization():
     st.write("Here you can explore visualizations of Monkeypox data.")
 
     # Import the dataset
-    df = pd.read_csv("Monkeypox_valuereplaced.csv")  
+    df = pd.read_csv("first_cleaned_dataset.csv")  
 
     # Display the first 10 rows of the dataset
     st.subheader("First 10 Rows of the Dataset")
