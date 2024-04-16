@@ -1,38 +1,49 @@
-#Libraries
+import streamlit as st
 import pandas as pd
 import numpy as np
-import streamlit as st
-
-#Visualization libraries
 import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
 from wordcloud import WordCloud
 import plotly.graph_objs as go
+import hashlib
 
-# Define function for sidebar menu
-def sidebar_menu():
+
+import matplotlib
+matplotlib.use('Agg')
+
+#utils
+import os
+import joblib
+import hashlib
+
+# Assuming db_core.py is correctly set up with these functions
+from db_core import create_usertable, add_userdata, login_user
+
+def generate_hashes(password):
+    return hashlib.sha256(str.encode(password)).hexdigest()
+
+def verify_hashes(password, hashed_text):
+    return generate_hashes(password) == hashed_text
+
+def create_sidebar_menu():
     st.sidebar.title("Monkeypox ML Visualization")
     menu_selection = st.sidebar.radio("Menu", ["Home", "Data Visualization", "Model Evaluation", "About"])
     return menu_selection
 
-# Define function for home page content
-def home_page():
+def display_home_page():
     st.title("Welcome to Monkeypox ML Visualization")
     st.image("image/im1.jpg", use_column_width=True)
     st.write("This web application provides visualization of Monkeypox prediction using machine learning models.")
 
-# Define function for data visualization page content
-def data_visualization():
+
+# Dataset Visualization Section
+def display_data_visualization():
     st.title("Data Visualization")
     st.write("Here you can explore visualizations of Monkeypox data.")
-
-    # Import the dataset
-    df = pd.read_csv("first_cleaned_dataset.csv")  
-
-    # Display the first 10 rows of the dataset
-    st.subheader("First 10 Rows of the Dataset")
-    st.write(df.head(10))
+    # Load data and show
+    df = pd.read_csv("first_cleaned_dataset.csv") 
+    st.write(df.head())
 
     # Display dataset information
     st.subheader("Dataset Information")
@@ -43,7 +54,7 @@ def data_visualization():
     st.write("Descriptive statistics of the dataset:")
     st.write(df.describe())
 
-    # Dropdown menu to select plot
+    # Dropdown menu to select cases plot
     plot_option = st.selectbox("Select Plot", ["Distribution of Cases per Country", "Reported Cases: Top Countries Affected",
                                                "Confirm Cases Distribution","Countries per case distribution","Most Common Symptoms/Signs",
                                                "Cases Distribution over Time","Day of the week with highest confirmation",
@@ -198,14 +209,12 @@ def data_visualization():
 
 
 
-
-
-# Define function for model evaluation page content
-def model_evaluation():
+# Model Evaluation Section
+def display_model_evaluation():
     st.title("Model Evaluation")
-    st.write("The following shows the performance of machine learning models for Monkeypox prediction.")
+    st.write("Performance metrics of machine learning models for Monkeypox prediction.")
 
-   # Load the evaluation metrics for each model
+    # Load the evaluation metrics for each model
     evaluation_metrics = {
         'Random Forest': {'Accuracy': 96.04, 'Precision': 96.31, 'Recall': 96.04, 'F1-score': 96.13, 'AUC-ROC': 99.27},
         'XGBoost': {'Accuracy': 92.95, 'Precision': 93.63, 'Recall': 92.95, 'F1-score': 93.21, 'AUC-ROC': 98.53},
@@ -260,13 +269,9 @@ def model_evaluation():
     st.write("For instance, accuracy measures the overall correctness of the model, precision measures the ratio of correctly predicted positive observations to the total predicted positives, recall measures the ratio of correctly predicted positive observations to the all observations in actual class, and F1-score is the harmonic mean of precision and recall.")
     st.write("A higher value of these metrics indicates better model performance.")
 
-
     st.image("image/RFcm.png")
     st.image("image/xgbcm.png")
     st.image("image/dtcm.png")
-
-
-
 
     # Display recommended best-performing model with visualization and justification
     st.subheader("Recommended Best-Performing Model:")
@@ -282,23 +287,79 @@ def model_evaluation():
     st.write("AUC-ROC: 99.27%")
 
 
-# Define function for about page content
-def about():
+
+
+# About wep app section
+def display_about():
     st.title("About")
-    st.write("This web application is created for Monkeypox ML visualization project.")
+    st.write("This web application is created for visualizing the impact and spread of Monkeypox using data-driven insights.")
+    st.title("Ethical Issues and Considerations")
+    st.write("""As a sole researcher leading this study on monkeypox, it is imperative to address the ethical considerations associated with the utilization of the Kaggle dataset. This acknowledgment aims to inform both the public and stakeholders about the ethical framework guiding this research endeavours.
+1.	Responsible Data Usage: This research strictly adheres to the terms of use and licensing agreements stipulated by Kaggle for the dataset utilized. It recognizes and respects the intellectual property rights of data contributors, committing to utilizing the data responsibly and ethically.
+2.	Data Privacy and Confidentiality: Prioritizing the protection of individuals’ privacy and confidentiality represented in the dataset, the research takes measures to anonymize or de-identify personal information. This ensures the safeguarding of data privacy rights and prevents any unintended disclosures.
+3.	Informed Consent: While the Kaggle dataset may comprise publicly available data, this research recognizes and respects the original consent obtained by data contributors for the use of their data in research.
+4.	Data Integrity and Accuracy: Ensuring the integrity and accuracy of the dataset is paramount in this research. Thorough data validation processes was conducted to verify the reliability of the sources, identify any biases or errors, and transparently report any limitations or uncertainties.
+5.	Responsible Data Sharing: Research commitment extends to responsible data sharing practices. Should the researcher choose to share or publish the findings based on the Kaggle dataset, it is done in accordance with open data principles, ensuring proper documentation and compliance with legal and ethical guidelines.
+6. Assurance of User Data Protection: This research guarantees the protection of sensitive user information, such as usernames and passwords. These data elements will be stringently protected, will not be shared with any third party, and will be exclusively used for the purposes of this research. Comprehensive security measures are in place to prevent unauthorized access and ensure the confidentiality and integrity of user data.
+""")
 
-# Main function to run the Streamlit web application
+
+# Logout section
+def show_logout_button():
+    if st.sidebar.button("Logout"):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.sidebar.success("You have been logged out.")
+        st.experimental_rerun()
+        
+
+# Login section
+def login_user_interface():
+    username = st.sidebar.text_input("Username")
+    password = st.sidebar.text_input("Password", type='password')
+    if st.sidebar.button("Login"):
+        hashed_pswd = generate_hashes(password)
+        result = login_user(username, hashed_pswd)
+        if result:
+            st.session_state['username'] = username
+            st.session_state['logged_in'] = True
+            st.success(f"Welcome, {username}")
+            st.experimental_rerun()
+        else:
+            st.error("Incorrect Username or Password")
+
+# New user signup section
+def signup_user_interface():
+    new_username = st.sidebar.text_input("Choose a username", key='new_username')
+    new_password = st.sidebar.text_input("Create a password", type='password', key='new_password')
+    confirm_password = st.sidebar.text_input("Confirm password", type='password', key='confirm_password')
+    if new_password and new_password == confirm_password:
+        if st.sidebar.button("Create Account"):
+            hashed_new_password = generate_hashes(new_password)
+            add_userdata(new_username, hashed_new_password)
+            st.success("You have successfully created a new account! Please login.")
+    elif new_password != confirm_password:
+        st.error("Passwords do not match!")
+
 def main():
-    menu_selection = sidebar_menu()
-
-    if menu_selection == "Home":
-        home_page()
-    elif menu_selection == "Data Visualization":
-        data_visualization()
-    elif menu_selection == "Model Evaluation":
-        model_evaluation()
-    elif menu_selection == "About":
-        about()
+    if 'logged_in' not in st.session_state:
+        st.sidebar.title("Login/Signup")
+        option = st.sidebar.selectbox("Login/Signup", ["Login", "Signup"])
+        if option == "Signup":
+            signup_user_interface()
+        else:
+            login_user_interface()
+    else:
+        menu_selection = create_sidebar_menu()
+        show_logout_button()  # Display the logout button in the sidebar
+        if menu_selection == "Home":
+            display_home_page()
+        elif menu_selection == "Data Visualization":
+            display_data_visualization()
+        elif menu_selection == "Model Evaluation":
+            display_model_evaluation()
+        elif menu_selection == "About":
+            display_about()
 
 if __name__ == "__main__":
     main()
