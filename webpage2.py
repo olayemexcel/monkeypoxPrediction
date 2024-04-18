@@ -17,7 +17,7 @@ import os
 import joblib
 import hashlib
 
-# Assuming db_core.py is correctly set up with these functions
+# import functions from set up db_core.py 
 from db_core import create_usertable, add_userdata, login_user
 
 def generate_hashes(password):
@@ -342,6 +342,8 @@ def signup_user_interface():
         st.error("Passwords do not match!")
 
 def main():
+    #display_home_page()
+    st.info("Follow the Top left arrow to access the menu bar..")
     if 'logged_in' not in st.session_state:
         st.sidebar.title("Login/Signup")
         option = st.sidebar.selectbox("Login/Signup", ["Login", "Signup"])
